@@ -1,0 +1,342 @@
+
+<link href="https://unpkg.com/tailwindcss@^1.0/dist/tailwind.min.css" rel="stylesheet" >
+<style>
+    body{
+        margin : 0 ;
+        background: black;
+    }
+</style>
+
+<div class="fixed text-white text-sm ml-2 mt-1 select-none">
+    <span>Score: </span>
+    <span id="score">0</span>
+</div>
+
+<div class="fixed inset-0 flex items-center justify-center" id="modal">
+    <div class="bg-white max-w-md w-full p-6 text-center">
+        <h1 class="text-4xl font-bold leading-9" id="newScore">0</h1>
+        <p class="text-sm text-gray-700 mb-4">Points</p>
+        <div>
+            <button class="bg-red-500 text-white w-full py-3 rounded-full" id="startGame">Start Game</button>
+        </div>
+    </div>
+</div>
+
+<canvas></canvas>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.11.4/gsap.min.js"
+ integrity="sha512-f8mwTB+Bs8a5c46DEm7HQLcJuHMBaH/UFlcgyetMqqkvTcYg4g5VXsYR71b3qC82lZytjNYvBj2pf0VekA9/FQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script type="text/javascript">//step 1
+    console.log(gsap)
+    const canvas = document.querySelector('canvas')
+    const c = canvas.getContext('2d')
+     
+    canvas.width  = innerWidth //Cardinality of background X which we need to draw inside
+    canvas.height = innerWidth //Cardinality of background Y
+    console.log(canvas.width)
+    
+    const scoreElement = document.querySelector('#score');
+    const startGameBtn = document.querySelector('#startGame');
+    const modalElement = document.querySelector('#modal');
+    const newScoreEl= document.querySelector('#newScore');
+    
+    
+    
+    
+    
+    
+    // step 2 create a player
+    class Player { //Cardinality of players X
+        constructor(x, y, radius, color) {
+            this.x      = x
+            this.y      = y
+            this.radius = radius
+            this.color  = color
+        }
+    
+        draw(){
+            c.beginPath()
+            c.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false)
+            c.fillStyle = this.color
+            c.fill()
+        }
+    }
+    
+    
+    //step 3
+    class Projectile {
+    
+        constructor(x, y, radius, color, velocity) {
+            this.x         = x
+            this.y         = y
+            this.radius    = radius
+            this.color     = color
+            this.velocity  = velocity
+    
+        }
+    
+        draw() {
+            c.beginPath()
+            c.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false)
+            c.fillStyle = this.color
+            c.fill()
+        }
+    
+        update() {
+            this.draw()
+            this.x = this.x + this.velocity.x
+            this.y = this.y + this.velocity.y
+        
+        }
+    }
+    
+    class Enemy {
+        
+        constructor(x, y, radius, color, velocity) {
+            this.x         = x
+            this.y         = y
+            this.radius    = radius
+            this.color     = color
+            this.velocity  = velocity
+    
+        }
+    
+        draw() {
+            c.beginPath()
+            c.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false)
+            c.fillStyle = this.color
+            c.fill()
+        }
+    
+        update() {
+            this.draw()
+            this.x = this.x + this.velocity.x
+            this.y = this.y + this.velocity.y
+        
+        }
+    }
+    
+    const friction = 0.99
+    class Particle { //can i delet it's not work
+        
+        constructor(x, y, radius, color, velocity) {
+            this.x         = x
+            this.y         = y
+            this.radius    = radius
+            this.color     = color
+            this.velocity  = velocity
+            this.alpha = 1
+    
+        }
+    
+        draw() {
+            c.save()
+            c.globalAlpha = this.alpha
+            c.beginPath()
+            c.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false)
+            c.fillStyle = this.color
+            c.fill()
+            c.restore()
+        }
+    
+        update() {
+            this.draw()
+            this.velocity.x *= friction // to give a particles a pretty cool slow effect
+            this.velocity.y *= friction
+            this.x = this.x + this.velocity.x
+            this.y = this.y + this.velocity.y
+            this.alpha -= 0.01
+        
+        }
+    }
+    
+    
+    const x = canvas.width  / 2
+    const y = canvas.height / 2
+    
+    let player  = new Player(x, y,20, 'pink')// player
+    let pros    = [] // array when need it to full projectile inside it
+    let enemies = []
+    let particles = []
+    
+    
+    function restartGame(){
+        player  = new Player(x, y,20, 'pink')// player
+        pros    = [] // array when need it to full projectile inside it
+        enemies = []
+        particles = []
+        score = 0
+        scoreElement.innerHTML = score
+        newScoreEl.innerHTML = score
+    
+    }
+    
+    function spEnemies() {
+        setInterval(() =>
+        {
+            const radius   = Math.random() * (30 - 4) + 4;
+            let x ;
+            let y ;
+    
+            if(Math.random() < 0.5 ) {
+                x = Math.random() < 0.5 ? 0 - radius :  
+                canvas.width + radius;
+                y = Math.random() * canvas.height;
+            }
+            else {
+                x = Math.random() * canvas.width;
+                y = Math.random() < 0.5 ? 0 - radius :  
+                canvas.height + radius;
+            }
+           // const color = 'green'
+            const color    = `hsl(${Math.random() * 360}, 50%, 50%)`; // to make our enemy a differente color than other
+            const angle = Math.atan2(
+              canvas.height / 2 - y  , 
+              canvas.width / 2  - x  
+            )  
+            const velocity = { // it like a tan 
+                x : Math.cos(angle), 
+                y : Math.sin(angle)
+            }
+            enemies.push(new Enemy (x, y, radius, color, velocity) )
+        }, 1000)
+        console.log(enemies)
+    }
+    
+    // projectiles
+    let animateId ;
+    let score = 0;
+    function animate(){
+        animateId = requestAnimationFrame(animate)
+        c.fillStyle ='rgba(0, 0, 0, 0.1)'
+        c.fillRect(0, 0, canvas.width, canvas.height) // every moment when the Projectile is appears the function clearRect is clear it 
+        // for more explain delete the clearRect to see 
+        player.draw() // we put it here to see the player /// hh delete it again to more explain
+        particles.forEach((particle, index) => { //draw the particles
+            
+            if (particle.alpha <= 0){ //delete the particle from the screen
+                particles.splice(index, 1)
+            }else {
+                particle.update() // draw the particle
+            }
+            
+        })
+    
+        pros.forEach((pro,proIndex) =>{
+          pro.update()
+    
+          //remove from edges of screen
+          if (pro.x + pro.radius < 0 || pro.x - pro.radius > canvas.width
+             || pro.y + pro.radius < 0 || pro.y - pro.radius > canvas.height){
+            setTimeout(() => {
+               
+                pros.splice(proIndex, 1) // here we delete the projectile
+             },0)
+          
+    }})
+        enemies.forEach((enemy, index) => {
+            enemy.update()
+    
+            const  dist_Enemy_Player = Math.hypot(player.x - enemy.x, player.y - enemy.y)
+    
+            //Game Over when the enemies meet player
+            if (dist_Enemy_Player - enemy.radius - player.radius < 1) {
+                cancelAnimationFrame(animateId)
+                modalElement.style.display = 'flex';
+                newScoreEl.innerHTML = score
+    
+            }
+    
+            pros.forEach((pro, proIndex) => {
+            const dist_Enemy_Proj = Math.hypot(pro.x - enemy.x, pro.y - enemy.y)
+              
+            if (dist_Enemy_Proj - enemy.radius - pro.radius < 1){// when the enemy and the pro are meet
+    
+                for (let i = 0; i < enemy.radius; i++) {
+    
+                    //draw the particles when enemy was died
+                    particles.push(new Particle(
+                        pro.x ,
+                        pro.y 
+                        ,Math.random() * 2 // make a radius of particles in a different size
+                    ,enemy.color 
+                    , {
+                        x : (Math.random() - 0.5) * (Math.random() * 6), // for more power to particle 
+                        y : (Math.random() - 0.5) * (Math.random() * 6) 
+                        }))
+                }
+                if (enemy.radius - 10 > 5) { 
+    
+                     // score
+                    score += 100;
+                    scoreElement.innerHTML = score
+                    console.log(score)
+    
+                    //to make size of enemy small then before when the proj touch it
+                    gsap.to(enemy, { //gsap give us a better animation effect for our game
+                        radius : enemy.radius - 10
+                    })
+                    setTimeout(() => {
+                        pros.splice(proIndex, 1) // here we delete the projectile
+                     },0)
+                } else{
+                    score += 250;
+                    scoreElement.innerHTML = score
+                   
+                    setTimeout(() => {
+                        enemies.splice(index, 1) // here we delete the enemy
+                        pros.splice(proIndex, 1) // here we delete the projectile
+                     },0)
+                }
+                }
+    
+    
+                
+            
+    
+        })
+    })
+    }
+    
+    addEventListener('click', (event) => {
+        console.log(pros)
+                    
+        console.log(particles) //can i delet it's not work
+       
+        // here we calculete the angle between the Player and when we click coz we need it to calcule th Velocity 
+        const angle = Math.atan2(
+            event.clientY - canvas.height / 2, //clientY and clientX is cardinality of the point when we click
+            event.clientX - canvas.width / 2
+        )  
+        const velocity = { // it like a tan 
+            x : Math.cos(angle) * 5, //for more fast  
+            y : Math.sin(angle) * 5
+        }
+    
+        pros.push(
+            new Projectile
+            (
+                canvas.width / 2,
+                canvas.height / 2, 
+                5,
+                '#F59898',
+                velocity
+    
+            )
+        )  
+    }
+    )
+    
+    
+    startGameBtn.addEventListener('click', () =>{
+        restartGame()
+        animate()
+        spEnemies()
+        modalElement.style.display = 'none'
+    })
+    
+    </script>
+
+
+
+
+<script src="index.js"></script>
